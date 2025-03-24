@@ -23,11 +23,6 @@ Structured Data: Builds processed_data.csv with interests, traits, prefs.
 Matching Engine: Cosine similarity + preference scoring = top 5 matches.
 Feedback Loop: User actions tweak scores for smarter pairing.
 
-# Files
-socialmatch.py: The main script—everything from processing to matching.
-processed_data.csv: Intermediate feature output.
-final_matches.csv: Final match results with scores and ranks.
-
 # Built With
 Python: 3.12
 SpaCy: 3.7+ 
