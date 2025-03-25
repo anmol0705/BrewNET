@@ -1,6 +1,6 @@
 # BrewNET
 
-Welcome to BrewNET, a slick compatibility model that turns raw user data into precise matches. Built for a hackathon, this beast uses NLP, cosine similarity, and real-time feedback to pair people based on interests, traits, and preferences. Whether it’s sports buffs, ambitious pros, or religious souls, this engine’s got it covered.
+Welcome to BrewNET, a slick compatibility model that turns raw user data into precise matches. This beast uses NLP, cosine similarity, and real-time feedback to pair people based on interests, traits, and preferences. Whether it’s sports buffs, ambitious pros, or religious souls, this engine’s got it covered.
 
 # What It Does
 Inputs: User bios (bio.csv) and preferences (looking_for.csv).
