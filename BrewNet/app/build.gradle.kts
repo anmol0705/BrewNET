@@ -5,6 +5,9 @@ plugins {
     id("com.google.gms.google-services") version "4.4.2"
 }
 
+// Load local.properties
+
+
 android {
     namespace = "android.saswat.brewnet"
     compileSdk = 35
@@ -15,6 +18,8 @@ android {
         targetSdk = 35
         versionCode = 1
         versionName = "1.0"
+
+        manifestPlaceholders.put("MAPS_API_KEY", project.properties["MAPS_API_KEY"] as String? ?: "")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

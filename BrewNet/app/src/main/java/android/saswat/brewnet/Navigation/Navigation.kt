@@ -4,7 +4,13 @@ import android.saswat.brewnet.screens.FirstScreen
 import android.saswat.brewnet.screens.Screens
 import android.saswat.brewnet.mainscreens.AgeSelectionScreen
 import android.saswat.brewnet.mainscreens.GenderSelectionScreen
+import android.saswat.brewnet.mainscreens.LocationScreen
+import android.saswat.brewnet.mainscreens.ManualLocationScreen
 import android.saswat.brewnet.mainscreens.PhotosScreen
+import android.saswat.brewnet.questions.BrewNetPurposeScreen
+import android.saswat.brewnet.questions.ConnectionTypeScreen
+import android.saswat.brewnet.questions.InterestsScreen
+import android.saswat.brewnet.questions.QualitiesScreen
 import android.saswat.brewnet.ui.signInandSignUp.PhoneVerificationScreen
 import android.saswat.brewnet.ui.signInandSignUp.SignInScreen
 import android.saswat.brewnet.ui.signInandSignUp.SignUpScreen
@@ -57,18 +63,15 @@ fun Navigation(navController: NavHostController) {
                     animationSpec = tween(300)
                 )
             }
-
         ) {
-
             FirstScreen(
                 navController = navController,
-                onSignInClick = { navController.navigate(Screens.SignIn.route) },
-                onSignUpClick = { navController.navigate(Screens.SignUp.route) },
+                onSignInClick = { navController.navigate(Screens.SignInScreen.route) },
+                onSignUpClick = { navController.navigate(Screens.SignUpScreen.route) },
             )
-
         }
-        composable(route = Screens.SignIn.route,
 
+        composable(route = Screens.SignInScreen.route,
             enterTransition = {
                 slideIntoContainer(
                     AnimatedContentTransitionScope.SlideDirection.Left,
@@ -97,12 +100,12 @@ fun Navigation(navController: NavHostController) {
             SignInScreen(
                 navController = navController,
                 authViewModel = viewModel(),
-                onSignUpClick = { navController.navigate(Screens.SignUp.route) },
+                onSignUpClick = { navController.navigate(Screens.SignUpScreen.route) },
                 onEmailSignInClick = { /* Handle email sign in click */ }
             )
         }
 
-        composable(route = Screens.SignUp.route,
+        composable(route = Screens.SignUpScreen.route,
             enterTransition = {
                 slideIntoContainer(
                     AnimatedContentTransitionScope.SlideDirection.Left,
@@ -134,7 +137,8 @@ fun Navigation(navController: NavHostController) {
         composable(
             route = Screens.VerifyPhone.route,
             arguments = listOf(
-                navArgument("phoneNumber") { type = NavType.StringType }
+                navArgument("phoneNumber") { type = NavType.StringType },
+                navArgument("verificationId") { type = NavType.StringType }
             ),
             enterTransition = {
                 slideIntoContainer(
@@ -162,10 +166,12 @@ fun Navigation(navController: NavHostController) {
             }
         ) { backStackEntry ->
             val phoneNumber = backStackEntry.arguments?.getString("phoneNumber") ?: ""
+            val verificationId = backStackEntry.arguments?.getString("verificationId") ?: ""
             PhoneVerificationScreen(
                 navController = navController,
                 phoneAuthViewModel = phoneAuthViewModel,
-                phoneNumber = phoneNumber
+                phoneNumber = phoneNumber,
+                verificationId = verificationId
             )
         }
 
@@ -203,13 +209,10 @@ fun Navigation(navController: NavHostController) {
                         newUsername = authViewModel.userData.value?.username ?: "",
                         newDateOfBirth = age.toString(),
                         newGender = authViewModel.userData.value?.gender ?: "",
-
-                    ) { success ->
-                        if (success) {
-                            navController.navigate(Screens.GenderSelection.route) {
-                                popUpTo(Screens.SignUp.route) { inclusive = true }
-                            }
-                        }
+                        newGenderSubcategory = ""
+                    )
+                    navController.navigate(Screens.GenderSelection.route) {
+                        popUpTo(Screens.SignUpScreen.route) { inclusive = true }
                     }
                 }
             )
@@ -249,12 +252,10 @@ fun Navigation(navController: NavHostController) {
                         newUsername = authViewModel.userData.value?.username ?: "",
                         newDateOfBirth = authViewModel.userData.value?.dateOfBirth ?: "",
                         newGender = gender,
-                    ) { success ->
-                        if (success) {
-                            navController.navigate(Screens.PhotosScreen.route) {
-                                popUpTo(Screens.SignUp.route) { inclusive = true }
-                            }
-                        }
+                        newGenderSubcategory = ""
+                    )
+                    navController.navigate(Screens.PhotosScreen.route) {
+                        popUpTo(Screens.SignUpScreen.route) { inclusive = true }
                     }
                 }
             )
@@ -290,8 +291,8 @@ fun Navigation(navController: NavHostController) {
             PhotosScreen(
                 navController = navController,
                 onPhotosUploaded = {
-                    navController.navigate(Screens.VerificationSuccess.route) {
-                        popUpTo(Screens.SignUp.route) { inclusive = true }
+                    navController.navigate(Screens.LocationScreen.route) {
+                        popUpTo(Screens.SignUpScreen.route) { inclusive = true }
                     }
                 }
             )
@@ -329,6 +330,195 @@ fun Navigation(navController: NavHostController) {
             )
         }
 
-        // Add other routes here...
+        composable(
+            route = Screens.LocationScreen.route,
+            enterTransition = {
+                slideIntoContainer(
+                    AnimatedContentTransitionScope.SlideDirection.Left,
+                    animationSpec = tween(300)
+                )
+            },
+            exitTransition = {
+                slideOutOfContainer(
+                    AnimatedContentTransitionScope.SlideDirection.Left,
+                    animationSpec = tween(300)
+                )
+            },
+            popEnterTransition = {
+                slideIntoContainer(
+                    AnimatedContentTransitionScope.SlideDirection.Right,
+                    animationSpec = tween(300)
+                )
+            },
+            popExitTransition = {
+                slideOutOfContainer(
+                    AnimatedContentTransitionScope.SlideDirection.Right,
+                    animationSpec = tween(300)
+                )
+            }
+        ) {
+            LocationScreen(
+                navController = navController
+            )
+        }
+
+        composable(
+            route = Screens.ManualLocation.route,
+            enterTransition = {
+                slideIntoContainer(
+                    AnimatedContentTransitionScope.SlideDirection.Left,
+                    animationSpec = tween(300)
+                )
+            },
+            exitTransition = {
+                slideOutOfContainer(
+                    AnimatedContentTransitionScope.SlideDirection.Left,
+                    animationSpec = tween(300)
+                )
+            },
+            popEnterTransition = {
+                slideIntoContainer(
+                    AnimatedContentTransitionScope.SlideDirection.Right,
+                    animationSpec = tween(300)
+                )
+            },
+            popExitTransition = {
+                slideOutOfContainer(
+                    AnimatedContentTransitionScope.SlideDirection.Right,
+                    animationSpec = tween(300)
+                )
+            }
+        ) {
+            ManualLocationScreen(
+                navController = navController
+            )
+        }
+
+        composable(
+            route = Screens.BrewNetPurpose.route,
+            enterTransition = {
+                slideIntoContainer(
+                    AnimatedContentTransitionScope.SlideDirection.Left,
+                    animationSpec = tween(300)
+                )
+            },
+            exitTransition = {
+                slideOutOfContainer(
+                    AnimatedContentTransitionScope.SlideDirection.Left,
+                    animationSpec = tween(300)
+                )
+            },
+            popEnterTransition = {
+                slideIntoContainer(
+                    AnimatedContentTransitionScope.SlideDirection.Right,
+                    animationSpec = tween(300)
+                )
+            },
+            popExitTransition = {
+                slideOutOfContainer(
+                    AnimatedContentTransitionScope.SlideDirection.Right,
+                    animationSpec = tween(300)
+                )
+            }
+        ) {
+            BrewNetPurposeScreen(
+                navController = navController
+            )
+        }
+        composable(
+            route = Screens.ConnectionType.route,
+            enterTransition = {
+                slideIntoContainer(
+                    AnimatedContentTransitionScope.SlideDirection.Left,
+                    animationSpec = tween(300)
+                )
+            },
+            exitTransition = {
+                slideOutOfContainer(
+                    AnimatedContentTransitionScope.SlideDirection.Left,
+                    animationSpec = tween(300)
+                )
+            },
+            popEnterTransition = {
+                slideIntoContainer(
+                    AnimatedContentTransitionScope.SlideDirection.Right,
+                    animationSpec = tween(300)
+                )
+            },
+            popExitTransition = {
+                slideOutOfContainer(
+                    AnimatedContentTransitionScope.SlideDirection.Right,
+                    animationSpec = tween(300)
+                )
+            }
+        ) {
+            ConnectionTypeScreen(
+                navController = navController
+            )
+        }
+        composable(
+            route = Screens.Qualities.route,
+            enterTransition = {
+                slideIntoContainer(
+                    AnimatedContentTransitionScope.SlideDirection.Left,
+                    animationSpec = tween(300)
+                )
+            },
+            exitTransition = {
+                slideOutOfContainer(
+                    AnimatedContentTransitionScope.SlideDirection.Left,
+                    animationSpec = tween(300)
+                )
+            },
+            popEnterTransition = {
+                slideIntoContainer(
+                    AnimatedContentTransitionScope.SlideDirection.Right,
+                    animationSpec = tween(300)
+                )
+            },
+            popExitTransition = {
+                slideOutOfContainer(
+                    AnimatedContentTransitionScope.SlideDirection.Right,
+                    animationSpec = tween(300)
+                )
+            }
+        ) {
+            QualitiesScreen(
+                navController = navController
+            )
+        }
+        composable(
+            route = Screens.Interests.route,
+            enterTransition = {
+                slideIntoContainer(
+                    AnimatedContentTransitionScope.SlideDirection.Left,
+                    animationSpec = tween(300)
+                )
+            },
+            exitTransition = {
+                slideOutOfContainer(
+                    AnimatedContentTransitionScope.SlideDirection.Left,
+                    animationSpec = tween(300)
+                )
+            },
+            popEnterTransition = {
+                slideIntoContainer(
+                    AnimatedContentTransitionScope.SlideDirection.Right,
+                    animationSpec = tween(300)
+                )
+            },
+            popExitTransition = {
+                slideOutOfContainer(
+                    AnimatedContentTransitionScope.SlideDirection.Right,
+                    animationSpec = tween(300)
+                )
+            }
+        ) {
+            InterestsScreen(
+                navController = navController
+            )
+        }
+
+
     }
 }

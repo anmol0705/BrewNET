@@ -36,6 +36,13 @@ data class UserData(
     val latitude: Double? = null,
     val longitude: Double? = null,
     val locationName: String = "",
+    val purpose: String = "",
+    val want: String = "",
+    val qualities: Map<String, Boolean> = mapOf(), 
+    val interests: Map<String, Boolean> = mapOf(), 
+    val isOnline: Boolean = false,
+    val lastActive: Long = System.currentTimeMillis(),
+    val locationUpdatedAt: Long = System.currentTimeMillis()
 )
 
 class AuthViewModel : ViewModel() {
@@ -249,32 +256,28 @@ class AuthViewModel : ViewModel() {
     fun signUpWithEmailPassword(
         email: String,
         password: String,
-        username: String,
-        dateOfBirth: String,
-        gender: String,
-        genderSubcategory: String,
-        profileImageUri: Uri? = null,
+        phoneNumber: String,
+        confirmPassword: String,
         onComplete: (Boolean) -> Unit
     ) {
         viewModelScope.launch {
             try {
+                val (isValid, errorMessage) = validateSignUpFields(email, phoneNumber, password, confirmPassword)
+                if (!isValid) {
+                    _authState.value = AuthState.Error(errorMessage)
+                    onComplete(false)
+                    return@launch
+                }
+
                 _authState.value = AuthState.Loading
                 val authResult = auth.createUserWithEmailAndPassword(email, password).await()
                 val uid = authResult.user?.uid ?: throw Exception("Failed to create user: No UID returned")
 
-                // Upload profile image if provided
-                var profileImageUrl = ""
-                if (profileImageUri != null) {
-                    profileImageUrl = uploadProfileImage(uid, profileImageUri)
-                }
-
                 val userData = UserData(
-                    username = username,
+                    username = email.substringBefore('@'), // Default username from email
                     email = email,
                     userId = uid,
-                    profileImageUrl = profileImageUrl,
-                    dateOfBirth = dateOfBirth,
-                    gender = gender,
+                    phoneNumber = phoneNumber,
                     authProvider = "email"
                 )
 
@@ -304,7 +307,7 @@ class AuthViewModel : ViewModel() {
                 // Sign in with credential
                 val authResult = auth.signInWithCredential(credential).await()
                 val user = authResult.user ?: throw Exception("Failed to sign in: No user returned")
-                val isNewUser = authResult.additionalUserInfo?.isNewUser == false
+                val isNewUser = authResult.additionalUserInfo?.isNewUser == true
 
                 if (isNewUser) {
                     // Create a new user record in Firestore
@@ -430,21 +433,22 @@ class AuthViewModel : ViewModel() {
                 val currentUser = auth.currentUser ?: throw Exception("User not authenticated")
                 val userRef = firestore.collection("users").document(currentUser.uid)
 
-                val updates = hashMapOf<String, Any>(
-                    "latitude" to latitude,
-                    "longitude" to longitude
+                val updates = mapOf(
+                    "latitude" to latitude as Any,
+                    "longitude" to longitude as Any,
+                    "locationUpdatedAt" to System.currentTimeMillis()
                 )
                 if (locationName.isNotEmpty()) {
-                    updates["locationName"] = locationName
+                    (updates as MutableMap<String, Any>)["locationName"] = locationName
                 }
 
                 userRef.update(updates).await()
 
-                // Update local state
                 _userData.value = _userData.value?.copy(
                     latitude = latitude,
                     longitude = longitude,
-                    locationName = if (locationName.isNotEmpty()) locationName else _userData.value?.locationName ?: ""
+                    locationName = if (locationName.isNotEmpty()) locationName else _userData.value?.locationName ?: "",
+                    locationUpdatedAt = System.currentTimeMillis()
                 )
 
                 _updateState.value = UpdateState.Success
@@ -457,39 +461,110 @@ class AuthViewModel : ViewModel() {
         }
     }
 
-    fun updateManualLocation(
-        locationName: String,
-        latitude: Double,
-        longitude: Double,
-        onComplete: (Boolean) -> Unit
-    ) {
+
+    fun updateUserPurpose(purpose: String, onComplete: (Boolean) -> Unit) {
+        viewModelScope.launch {
+            try {
+                val currentUser = auth.currentUser
+                if (currentUser != null) {
+                    val userRef = firestore.collection("users").document(currentUser.uid)
+                    val updates = mapOf(
+                        "purpose" to purpose
+                    )
+                    userRef.update(updates).await()
+
+                    // Update local state
+                    _userData.value = _userData.value?.copy(purpose = purpose)
+                    onComplete(true)
+                } else {
+                    onComplete(false)
+                }
+            } catch (e: Exception) {
+                Log.e("AuthViewModel", "Error updating user purpose", e)
+                onComplete(false)
+            }
+        }
+    }
+
+    fun updateUserSeek(want: String, onComplete: (Boolean) -> Unit) {
         viewModelScope.launch {
             try {
                 _updateState.value = UpdateState.Loading
+                val currentUser = auth.currentUser
+                if (currentUser != null) {
+                    val userRef = firestore.collection("users").document(currentUser.uid)
+                    val updates = mapOf(
+                        "want" to want
+                    )
+                    userRef.update(updates).await()
 
-                val currentUser = auth.currentUser ?: throw Exception("User not authenticated")
-                val userRef = firestore.collection("users").document(currentUser.uid)
-
-                val updates = hashMapOf(
-                    "locationName" to locationName,
-                    "latitude" to latitude,
-                    "longitude" to longitude
-                )
-
-                userRef.update(updates).await()
-
-                // Update local state
-                _userData.value = _userData.value?.copy(
-                    locationName = locationName,
-                    latitude = latitude,
-                    longitude = longitude
-                )
-
-                _updateState.value = UpdateState.Success
-                onComplete(true)
+                    // Update local state
+                    _userData.value = _userData.value?.copy(want = want)
+                    _updateState.value = UpdateState.Success
+                    onComplete(true)
+                } else {
+                    _updateState.value = UpdateState.Error("User not authenticated")
+                    onComplete(false)
+                }
             } catch (e: Exception) {
-                Log.e("AuthViewModel", "Error updating manual location", e)
-                _updateState.value = UpdateState.Error(e.message ?: "Failed to update location")
+                Log.e("AuthViewModel", "Error updating user seek preference", e)
+                _updateState.value = UpdateState.Error(e.message ?: "Failed to update preference")
+                onComplete(false)
+            }
+        }
+    }
+
+    fun updateUserQualities(qualities: Map<String, Boolean>, onComplete: (Boolean) -> Unit) {
+        viewModelScope.launch {
+            try {
+                _updateState.value = UpdateState.Loading
+                val currentUser = auth.currentUser
+                if (currentUser != null) {
+                    val userRef = firestore.collection("users").document(currentUser.uid)
+                    val updates = mapOf(
+                        "qualities" to qualities
+                    )
+                    userRef.update(updates).await()
+
+                    // Update local state
+                    _userData.value = _userData.value?.copy(qualities = qualities)
+                    _updateState.value = UpdateState.Success
+                    onComplete(true)
+                } else {
+                    _updateState.value = UpdateState.Error("User not authenticated")
+                    onComplete(false)
+                }
+            } catch (e: Exception) {
+                Log.e("AuthViewModel", "Error updating user qualities", e)
+                _updateState.value = UpdateState.Error(e.message ?: "Failed to update qualities")
+                onComplete(false)
+            }
+        }
+    }
+
+    fun updateUserInterests(interests: Map<String, Boolean>, onComplete: (Boolean) -> Unit) {
+        viewModelScope.launch {
+            try {
+                _updateState.value = UpdateState.Loading
+                val currentUser = auth.currentUser
+                if (currentUser != null) {
+                    val userRef = firestore.collection("users").document(currentUser.uid)
+                    val updates = mapOf(
+                        "interests" to interests
+                    )
+                    userRef.update(updates).await()
+
+                    // Update local state
+                    _userData.value = _userData.value?.copy(interests = interests)
+                    _updateState.value = UpdateState.Success
+                    onComplete(true)
+                } else {
+                    _updateState.value = UpdateState.Error("User not authenticated")
+                    onComplete(false)
+                }
+            } catch (e: Exception) {
+                Log.e("AuthViewModel", "Error updating user interests", e)
+                _updateState.value = UpdateState.Error(e.message ?: "Failed to update interests")
                 onComplete(false)
             }
         }
@@ -497,19 +572,20 @@ class AuthViewModel : ViewModel() {
 
     fun validateSignUpFields(
         email: String,
+        phoneNumber: String,
         password: String,
-        confirmPassword: String,
-        username: String,
-        dateOfBirth: String,
-        gender: String
+        confirmPassword: String
     ): Pair<Boolean, String> {
-        if (email.isBlank() || password.isBlank() || confirmPassword.isBlank() ||
-            username.isBlank() || dateOfBirth.isBlank() || gender.isBlank()) {
+        if (email.isBlank() || password.isBlank() || confirmPassword.isBlank() || phoneNumber.isBlank()) {
             return Pair(false, "All fields are required")
         }
 
         if (!android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
             return Pair(false, "Please enter a valid email address")
+        }
+
+        if (phoneNumber.length < 10) {
+            return Pair(false, "Please enter a valid phone number")
         }
 
         if (password != confirmPassword) {
@@ -521,5 +597,29 @@ class AuthViewModel : ViewModel() {
         }
 
         return Pair(true, "")
+    }
+
+    fun updateOnlineStatus(isOnline: Boolean) {
+        viewModelScope.launch {
+            try {
+                val currentUser = auth.currentUser ?: return@launch
+                val userRef = firestore.collection("users").document(currentUser.uid)
+                
+                val updates = mapOf(
+                    "isOnline" to isOnline,
+                    "lastActive" to System.currentTimeMillis()
+                )
+                
+                userRef.update(updates).await()
+                
+                // Update local state
+                _userData.value = _userData.value?.copy(
+                    isOnline = isOnline,
+                    lastActive = System.currentTimeMillis()
+                )
+            } catch (e: Exception) {
+                Log.e("AuthViewModel", "Error updating online status: ${e.message}", e)
+            }
+        }
     }
 }

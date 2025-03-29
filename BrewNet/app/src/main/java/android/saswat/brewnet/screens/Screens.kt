@@ -1,20 +1,26 @@
 package android.saswat.brewnet.screens
 
 sealed class Screens(val route: String) {
-    data object FirstScreen: Screens("first")
-    data object SignIn: Screens("signIn")
-    data object SignUp: Screens("signUp")
-    data object MainScreen: Screens("main")
-    data object PhoneSignIn: Screens("phoneSignIn")
-    data object VerifyPhone: Screens("verifyPhone/{phoneNumber}")
-    data object VerificationSuccess: Screens("verificationSuccess")
-    data object CompleteProfile: Screens("completeProfile")
-    data object AgeSelection: Screens("ageSelection")
-    data object GenderSelection: Screens("genderSelection")
-    data object PhotosScreen : Screens("photos")
+    object PhotosScreen : Screens("photos")
+    object LocationScreen : Screens("location")
+    object ManualLocation : Screens("manual_location")
+    object SignInScreen : Screens("signin")
+    object SignUpScreen : Screens("signup")
+    object FirstScreen : Screens("first")
+    object MainScreen : Screens("main")
+    object PhoneSignIn : Screens("phoneSignIn")
+    object VerifyPhone : Screens("verifyPhone/{phoneNumber}/{verificationId}")
+    object VerificationSuccess : Screens("verificationSuccess")
+    object CompleteProfile : Screens("completeProfile")
+    object AgeSelection : Screens("ageSelection")
+    object GenderSelection : Screens("genderSelection")
+    object BrewNetPurpose : Screens("brewNetPurpose")
+    object ConnectionType : Screens("connectionType")
+    object Interests : Screens("interests")
+    object Qualities: Screens("qualities")
 
     // Helper functions
     companion object {
-        fun getVerifyPhoneRoute(phoneNumber: String) = "verifyPhone/$phoneNumber"
+        fun getVerifyPhoneRoute(phoneNumber: String, verificationId: String) = "verifyPhone/$phoneNumber/$verificationId"
     }
 }

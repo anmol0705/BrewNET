@@ -85,14 +85,14 @@ fun SignInScreen(
                 Log.d("SignInScreen", "Auth success, navigating to success screen")
                 isLoading = false
                 navController.navigate(Screens.AgeSelection.route) {
-                    popUpTo(Screens.SignIn.route) { inclusive = true }
+                    popUpTo(Screens.SignInScreen.route) { inclusive = true }
                 }
             }
             is AuthState.NeedsProfileCompletion -> {
                 Log.d("SignInScreen", "Profile completion needed")
                 isLoading = false
                 navController.navigate(Screens.AgeSelection.route) {
-                    popUpTo(Screens.SignIn.route) { inclusive = true }
+                    popUpTo(Screens.SignInScreen.route) { inclusive = true }
                 }
             }
             is AuthState.Error -> {
@@ -112,7 +112,9 @@ fun SignInScreen(
         when (phoneAuthState) {
             is PhoneAuthState.CodeSent -> {
                 ccp?.let { picker ->
-                    navController.navigate(Screens.getVerifyPhoneRoute(picker.fullNumberWithPlus))
+                    val verificationId = (phoneAuthState as PhoneAuthState.CodeSent).verificationId
+                    phoneAuthViewModel.setVerificationId(verificationId)
+                    navController.navigate("verifyPhone/${picker.fullNumberWithPlus}/$verificationId")
                 }
             }
             is PhoneAuthState.Authenticated -> {

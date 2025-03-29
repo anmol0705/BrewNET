@@ -82,7 +82,7 @@ class PhoneAuthViewModel(private val applicationContext: Context) : ViewModel() 
             Log.d("PhoneAuthViewModel", "New code sent with verificationId: $verificationId")
             storedVerificationId = verificationId
             resendToken = token
-            _phoneAuthState.value = PhoneAuthState.CodeSent
+            _phoneAuthState.value = PhoneAuthState.CodeSent(verificationId)
         }
     }
     
@@ -158,12 +158,17 @@ class PhoneAuthViewModel(private val applicationContext: Context) : ViewModel() 
         }
     }
     
+    fun setVerificationId(verificationId: String) {
+        Log.d("PhoneAuthViewModel", "Setting verification ID: $verificationId")
+        storedVerificationId = verificationId
+    }
+
     fun verifyPhoneNumberWithCode(code: String, onComplete: (Boolean) -> Unit) {
         Log.d("PhoneAuthViewModel", "Verifying code: $code with storedVerificationId: $storedVerificationId")
         
         if (storedVerificationId.isEmpty()) {
             Log.e("PhoneAuthViewModel", "Verification ID is empty")
-            _phoneAuthState.value = PhoneAuthState.Error("Verification ID not found")
+            _phoneAuthState.value = PhoneAuthState.Error("Verification ID not found. Please request a new code.")
             onComplete(false)
             return
         }
@@ -171,18 +176,18 @@ class PhoneAuthViewModel(private val applicationContext: Context) : ViewModel() 
         _phoneAuthState.value = PhoneAuthState.Loading
         viewModelScope.launch {
             try {
+                Log.d("PhoneAuthViewModel", "Creating credential with verification ID: $storedVerificationId and code: $code")
                 val credential = PhoneAuthProvider.getCredential(storedVerificationId, code)
-                Log.d("PhoneAuthViewModel", "Created credential with verification ID and code")
                 signInWithPhoneAuthCredential(credential) { success ->
                     if (!success) {
-                        Log.e("PhoneAuthViewModel", "Sign in with credential failed")
-                        _phoneAuthState.value = PhoneAuthState.Error("Invalid or expired verification code")
+                        _phoneAuthState.value = PhoneAuthState.Error("Invalid verification code")
                     }
                     onComplete(success)
+
                 }
             } catch (e: Exception) {
                 Log.e("PhoneAuthViewModel", "Error during verification", e)
-                _phoneAuthState.value = PhoneAuthState.Error("Error verifying code: ${e.message}")
+                _phoneAuthState.value = PhoneAuthState.Error(e.message ?: "Error verifying code")
                 onComplete(false)
             }
         }

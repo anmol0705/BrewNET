@@ -10,7 +10,10 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -28,6 +31,7 @@ import android.saswat.brewnet.R
 import android.saswat.brewnet.screens.Screens
 import com.google.android.gms.location.LocationServices
 import android.saswat.viewModel.AuthViewModel
+import android.widget.Toast
 import androidx.lifecycle.viewmodel.compose.viewModel
 
 @Composable
@@ -63,93 +67,106 @@ fun LocationScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
         ) {
-            Spacer(modifier = Modifier.height(60.dp))
-            
-            Image(
-                painter = painterResource(id = R.drawable.location_pins),
-                contentDescription = "Location Pins",
+            Box(
                 modifier = Modifier
-                    .size(120.dp)
-                    .padding(16.dp),
-                contentScale = ContentScale.Fit
-            )
-            
-            Spacer(modifier = Modifier.height(24.dp))
-            
-            Text(
-                text = "Enable Your Location",
-                fontSize = 24.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color.Black
-            )
-            
-            Spacer(modifier = Modifier.height(8.dp))
-            
-            Text(
-                text = "Choose your location to start find people\naround you",
-                fontSize = 16.sp,
-                color = Color.Gray,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.padding(horizontal = 32.dp)
-            )
-            
-            Spacer(modifier = Modifier.height(32.dp))
-            
-            Button(
-                onClick = {
-                    when {
-                        ContextCompat.checkSelfPermission(
-                            context,
-                            Manifest.permission.ACCESS_FINE_LOCATION
-                        ) == PackageManager.PERMISSION_GRANTED -> {
-                            isLoading = true
-                            requestLocation(context) { latitude, longitude ->
-                                authViewModel.updateUserLocation(latitude, longitude) { success ->
-                                    isLoading = false
-                                    if (success) {
-                                        navController.navigate(Screens.PhotosScreen.route)
-                                    }
-                                }
-                            }
-                        }
-                        else -> {
-                            permissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
-                        }
-                    }
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFF246BFD)
-                )
+                    .weight(1f)
+                    .fillMaxWidth(),
+                contentAlignment = Alignment.Center
             ) {
-                if (isLoading) {
-                    CircularProgressIndicator(
-                        color = Color.White,
-                        modifier = Modifier.size(24.dp)
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(24.dp)
+                ) {
+                    Image(
+                        painter = painterResource(id = R.drawable.svgjsg1008),
+                        contentDescription = "Location Pins",
+                        modifier = Modifier
+                            .size(180.dp)
+                            .padding(8.dp),
+                        contentScale = ContentScale.Fit
                     )
-                } else {
+                    
                     Text(
-                        text = "Allow Location Access",
+                        text = "Enable Your Location",
+                        fontSize = 28.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.Black,
+                        textAlign = TextAlign.Center
+                    )
+                    
+                    Text(
+                        text = "Choose your location to start find people\naround you",
                         fontSize = 16.sp,
-                        color = Color.White
+                        color = Color.Gray,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(horizontal = 32.dp)
                     )
                 }
             }
             
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            Text(
-                text = "Enter Location Manually",
-                fontSize = 16.sp,
-                color = Color(0xFF246BFD),
-                modifier = Modifier.clickable {
-                    navController.navigate(Screens.ManualLocation.route)
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                modifier = Modifier.padding(bottom = 32.dp)
+            ) {
+                Button(
+                    onClick = {
+                        when {
+                            ContextCompat.checkSelfPermission(
+                                context,
+                                Manifest.permission.ACCESS_FINE_LOCATION
+                            ) == PackageManager.PERMISSION_GRANTED -> {
+                                isLoading = true
+                                requestLocation(context) { latitude, longitude ->
+                                    authViewModel.updateUserLocation(latitude, longitude) { success ->
+                                        isLoading = false
+                                        if (success) {
+                                            Toast.makeText(context, "Location permission granted successfully", Toast.LENGTH_SHORT).show()
+                                        }
+                                    }
+                                }
+                            }
+                            else -> {
+                                permissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+                            }
+                        }
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(56.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF246BFD)
+                    ),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    if (isLoading) {
+                        CircularProgressIndicator(
+                            color = Color.White,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    } else {
+                        Text(
+                            text = "Allow Location Access",
+                            fontSize = 16.sp,
+                            color = Color.White,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
                 }
-            )
+                
+                Text(
+                    text = "Enter Location Manually",
+                    fontSize = 16.sp,
+                    color = Color(0xFF246BFD),
+                    fontWeight = FontWeight.Medium,
+                    modifier = Modifier.clickable {
+                        navController.navigate(Screens.ManualLocation.route)
+                    }
+                )
+            }
         }
     }
 }

@@ -25,7 +25,8 @@ import kotlinx.coroutines.delay
 fun PhoneVerificationScreen(
     navController: NavController,
     phoneAuthViewModel: PhoneAuthViewModel,
-    phoneNumber: String
+    phoneNumber: String,
+    verificationId: String
 ) {
     var otpValue by remember { mutableStateOf("") }
     var errorMessage by remember { mutableStateOf<String?>(null) }
@@ -33,6 +34,10 @@ fun PhoneVerificationScreen(
     var secondsLeft by remember { mutableStateOf(60) }
     
     val phoneAuthState by phoneAuthViewModel.phoneAuthState.collectAsState()
+
+    LaunchedEffect(verificationId) {
+        phoneAuthViewModel.setVerificationId(verificationId)
+    }
 
     LaunchedEffect(Unit) {
         while (secondsLeft > 0) {
@@ -143,6 +148,7 @@ fun PhoneVerificationScreen(
                 } else {
                     errorMessage = "Please enter a 6-digit code"
                 }
+
             },
             modifier = Modifier
                 .fillMaxWidth()

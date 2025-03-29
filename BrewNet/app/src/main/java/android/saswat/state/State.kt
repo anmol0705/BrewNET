@@ -13,10 +13,11 @@ sealed class ImageLoadState {
     object Success : ImageLoadState()
     data class Error(val message: String) : ImageLoadState()
 }
+
 sealed class PhoneAuthState {
     object Initial : PhoneAuthState()
     object Loading : PhoneAuthState()
-    object CodeSent : PhoneAuthState()
+    data class CodeSent(val verificationId: String) : PhoneAuthState()
     object AutoVerified : PhoneAuthState()
     data class Authenticated(val isNewUser: Boolean) : PhoneAuthState()
     object ProfileCompleted : PhoneAuthState()
