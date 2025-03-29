@@ -1,25 +1,29 @@
 package android.saswat.viewModel
 
 import android.app.Activity
+import android.content.Context
 import android.net.Uri
 import android.saswat.state.PhoneAuthState
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.FirebaseException
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.auth.PhoneAuthCredential
-import com.google.firebase.auth.PhoneAuthOptions
-import com.google.firebase.auth.PhoneAuthProvider
+import com.google.firebase.auth.*
+import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException
+import com.google.firebase.auth.FirebaseAuthInvalidUserException
+import com.google.firebase.auth.FirebaseAuthUserCollisionException
+import com.google.firebase.auth.FirebaseAuthWeakPasswordException
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.storage.FirebaseStorage
+import io.michaelrocks.libphonenumber.android.NumberParseException
+import io.michaelrocks.libphonenumber.android.PhoneNumberUtil
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import java.util.concurrent.TimeUnit
 
-class PhoneAuthViewModel : ViewModel() {
+class PhoneAuthViewModel(private val applicationContext: Context) : ViewModel() {
     private val auth = FirebaseAuth.getInstance()
     private val firestore = FirebaseFirestore.getInstance()
     private val storage = FirebaseStorage.getInstance()
@@ -37,9 +41,12 @@ class PhoneAuthViewModel : ViewModel() {
     // Store resend token
     private var resendToken: PhoneAuthProvider.ForceResendingToken? = null
     
+    private var phoneNumberUtil: PhoneNumberUtil = PhoneNumberUtil.createInstance(applicationContext)
+
     // Callbacks for phone auth
     private val callbacks = object : PhoneAuthProvider.OnVerificationStateChangedCallbacks() {
         override fun onVerificationCompleted(credential: PhoneAuthCredential) {
+            Log.d("PhoneAuthViewModel", "Auto verification completed")
             signInWithPhoneAuthCredential(credential) { success ->
                 if (success) {
                     _phoneAuthState.value = PhoneAuthState.AutoVerified
@@ -49,10 +56,30 @@ class PhoneAuthViewModel : ViewModel() {
 
         override fun onVerificationFailed(e: FirebaseException) {
             Log.e("PhoneAuthViewModel", "Verification failed", e)
-            _phoneAuthState.value = PhoneAuthState.Error(e.message ?: "Verification failed")
+            when (e) {
+                is FirebaseAuthInvalidCredentialsException -> {
+                    _phoneAuthState.value = PhoneAuthState.Error("Invalid phone number format")
+                }
+                is FirebaseAuthInvalidUserException -> {
+                    _phoneAuthState.value = PhoneAuthState.Error("Invalid user")
+                }
+                is FirebaseAuthUserCollisionException -> {
+                    _phoneAuthState.value = PhoneAuthState.Error("User already exists")
+                }
+                is FirebaseAuthWeakPasswordException -> {
+                    _phoneAuthState.value = PhoneAuthState.Error("Weak password")
+                }
+                is FirebaseAuthException -> {
+                    _phoneAuthState.value = PhoneAuthState.Error("Authentication error: ${e.message}")
+                }
+                else -> {
+                    _phoneAuthState.value = PhoneAuthState.Error(e.message ?: "Verification failed")
+                }
+            }
         }
 
         override fun onCodeSent(verificationId: String, token: PhoneAuthProvider.ForceResendingToken) {
+            Log.d("PhoneAuthViewModel", "New code sent with verificationId: $verificationId")
             storedVerificationId = verificationId
             resendToken = token
             _phoneAuthState.value = PhoneAuthState.CodeSent
@@ -60,62 +87,118 @@ class PhoneAuthViewModel : ViewModel() {
     }
     
     fun startPhoneNumberVerification(phoneNumber: String, activity: Activity) {
-        // Basic validation for phone number (consider using libphonenumber library for better validation)
-        if (!phoneNumber.startsWith("+")) {
-            _phoneAuthState.value = PhoneAuthState.Error("Phone number must start with country code (e.g., +1)")
-            return
+        try {
+            clearVerificationData() // Use this instead of resetState()
+            
+            val parsedNumber = phoneNumberUtil.parse(phoneNumber, null)
+            
+            if (!phoneNumberUtil.isValidNumber(parsedNumber)) {
+                _phoneAuthState.value = PhoneAuthState.Error("Please enter a valid phone number")
+                return
+            }
+            
+            val formattedNumber = phoneNumberUtil.format(parsedNumber, PhoneNumberUtil.PhoneNumberFormat.E164)
+            
+            _phoneAuthState.value = PhoneAuthState.Loading
+            
+            Log.d("PhoneAuthViewModel", "Starting new verification for number: $formattedNumber")
+            
+            val options = PhoneAuthOptions.newBuilder(auth)
+                .setPhoneNumber(formattedNumber)
+                .setTimeout(60L, TimeUnit.SECONDS)
+                .setActivity(activity)
+                .setCallbacks(callbacks)
+                .build()
+            
+            PhoneAuthProvider.verifyPhoneNumber(options)
+            
+        } catch (e: NumberParseException) {
+            Log.e("PhoneAuthViewModel", "Number parse exception", e)
+            _phoneAuthState.value = PhoneAuthState.Error("Invalid phone number format. Please include country code (+XX)")
+        } catch (e: Exception) {
+            Log.e("PhoneAuthViewModel", "General exception", e)
+            _phoneAuthState.value = PhoneAuthState.Error("Error processing phone number: ${e.message}")
         }
-        
+    }
+    
+    fun resendVerificationCode(phoneNumber: String, activity: Activity) {
         _phoneAuthState.value = PhoneAuthState.Loading
         
-        val options = PhoneAuthOptions.newBuilder(auth)
-            .setPhoneNumber(phoneNumber) // Phone number to verify
-            .setTimeout(60L, TimeUnit.SECONDS) // Timeout duration
-            .setActivity(activity) // Activity for callback binding
-            .setCallbacks(callbacks) // OnVerificationStateChangedCallbacks
-            .build()
+        try {
+            val parsedNumber = phoneNumberUtil.parse(phoneNumber, null)
             
-        PhoneAuthProvider.verifyPhoneNumber(options)
+            if (!phoneNumberUtil.isValidNumber(parsedNumber)) {
+                _phoneAuthState.value = PhoneAuthState.Error("Please enter a valid phone number")
+                return
+            }
+            
+            val formattedNumber = phoneNumberUtil.format(parsedNumber, PhoneNumberUtil.PhoneNumberFormat.E164)
+            Log.d("PhoneAuthViewModel", "Resending code to: $formattedNumber")
+            
+            val optionsBuilder = PhoneAuthOptions.newBuilder(auth)
+                .setPhoneNumber(formattedNumber)
+                .setTimeout(60L, TimeUnit.SECONDS)
+                .setActivity(activity)
+                .setCallbacks(callbacks)
+            
+            // Only set resendToken if it's not null
+            resendToken?.let { token ->
+                Log.d("PhoneAuthViewModel", "Using resend token")
+                optionsBuilder.setForceResendingToken(token)
+            }
+            
+            PhoneAuthProvider.verifyPhoneNumber(optionsBuilder.build())
+            
+        } catch (e: NumberParseException) {
+            Log.e("PhoneAuthViewModel", "Number parse exception during resend", e)
+            _phoneAuthState.value = PhoneAuthState.Error("Invalid phone number format. Please include country code (+XX)")
+        } catch (e: Exception) {
+            Log.e("PhoneAuthViewModel", "Error during resend", e)
+            _phoneAuthState.value = PhoneAuthState.Error("Error processing phone number: ${e.message}")
+        }
     }
     
     fun verifyPhoneNumberWithCode(code: String, onComplete: (Boolean) -> Unit) {
+        Log.d("PhoneAuthViewModel", "Verifying code: $code with storedVerificationId: $storedVerificationId")
+        
         if (storedVerificationId.isEmpty()) {
+            Log.e("PhoneAuthViewModel", "Verification ID is empty")
             _phoneAuthState.value = PhoneAuthState.Error("Verification ID not found")
             onComplete(false)
             return
         }
         
         _phoneAuthState.value = PhoneAuthState.Loading
-        val credential = PhoneAuthProvider.getCredential(storedVerificationId, code)
-        signInWithPhoneAuthCredential(credential, onComplete)
-    }
-    
-    fun resendVerificationCode(phoneNumber: String, activity: Activity) {
-        _phoneAuthState.value = PhoneAuthState.Loading
-        
-        val options = PhoneAuthOptions.newBuilder(auth)
-            .setPhoneNumber(phoneNumber)
-            .setTimeout(60L, TimeUnit.SECONDS)
-            .setActivity(activity)
-            .setCallbacks(callbacks)
-            
-        // Only set resendToken if it's not null
-        resendToken?.let { token ->
-            options.setForceResendingToken(token)
+        viewModelScope.launch {
+            try {
+                val credential = PhoneAuthProvider.getCredential(storedVerificationId, code)
+                Log.d("PhoneAuthViewModel", "Created credential with verification ID and code")
+                signInWithPhoneAuthCredential(credential) { success ->
+                    if (!success) {
+                        Log.e("PhoneAuthViewModel", "Sign in with credential failed")
+                        _phoneAuthState.value = PhoneAuthState.Error("Invalid or expired verification code")
+                    }
+                    onComplete(success)
+                }
+            } catch (e: Exception) {
+                Log.e("PhoneAuthViewModel", "Error during verification", e)
+                _phoneAuthState.value = PhoneAuthState.Error("Error verifying code: ${e.message}")
+                onComplete(false)
+            }
         }
-            
-        PhoneAuthProvider.verifyPhoneNumber(options.build())
     }
     
     private fun signInWithPhoneAuthCredential(credential: PhoneAuthCredential, onComplete: (Boolean) -> Unit) {
         viewModelScope.launch {
             try {
+                Log.d("PhoneAuthViewModel", "Starting sign in with credential")
                 val authResult = auth.signInWithCredential(credential).await()
                 val user = authResult.user ?: throw Exception("Failed to sign in: No user returned")
                 val isNewUser = authResult.additionalUserInfo?.isNewUser == true
                 
+                Log.d("PhoneAuthViewModel", "Sign in successful. User ID: ${user.uid}, New user: $isNewUser")
+                
                 if (isNewUser) {
-                    // This is a new user, we'll need to collect profile info later
                     val userData = UserData(
                         userId = user.uid,
                         phoneNumber = user.phoneNumber ?: "",
@@ -124,9 +207,7 @@ class PhoneAuthViewModel : ViewModel() {
                     
                     firestore.collection("users").document(user.uid).set(userData).await()
                     _userData.value = userData
-                }
-                else {
-                    // Existing user, fetch their data
+                } else {
                     val document = firestore.collection("users").document(user.uid).get().await()
                     if (document.exists()) {
                         _userData.value = document.toObject(UserData::class.java)
@@ -137,7 +218,23 @@ class PhoneAuthViewModel : ViewModel() {
                 onComplete(true)
             } catch (e: Exception) {
                 Log.e("PhoneAuthViewModel", "Sign in failed", e)
-                _phoneAuthState.value = PhoneAuthState.Error(e.message ?: "Sign in failed")
+                when (e) {
+                    is FirebaseAuthInvalidCredentialsException -> {
+                        _phoneAuthState.value = PhoneAuthState.Error("Invalid verification code")
+                    }
+                    is FirebaseAuthInvalidUserException -> {
+                        _phoneAuthState.value = PhoneAuthState.Error("Invalid user")
+                    }
+                    is FirebaseAuthUserCollisionException -> {
+                        _phoneAuthState.value = PhoneAuthState.Error("User already exists")
+                    }
+                    is FirebaseAuthWeakPasswordException -> {
+                        _phoneAuthState.value = PhoneAuthState.Error("Weak password")
+                    }
+                    else -> {
+                        _phoneAuthState.value = PhoneAuthState.Error("Sign in failed: ${e.message}")
+                    }
+                }
                 onComplete(false)
             }
         }
@@ -183,7 +280,7 @@ class PhoneAuthViewModel : ViewModel() {
                     profileImageUrl = profileImageUrl,
                     dateOfBirth = dateOfBirth,
                     gender = gender,
-                    genderSubcategory = genderSubcategory,
+
                     phoneNumber = currentUser.phoneNumber ?: "",
                     authProvider = "phone"
                 )
@@ -207,5 +304,9 @@ class PhoneAuthViewModel : ViewModel() {
         _phoneAuthState.value = PhoneAuthState.Initial
     }
     
-    
+    fun clearVerificationData() {
+        storedVerificationId = ""
+        resendToken = null
+        _phoneAuthState.value = PhoneAuthState.Initial
+    }
 }

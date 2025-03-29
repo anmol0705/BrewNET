@@ -31,9 +31,11 @@ data class UserData(
     val profileImageUrl: String = "",
     val dateOfBirth: String = "",
     val gender: String = "",
-    val genderSubcategory: String = "",
     val phoneNumber: String = "",
-    val authProvider: String = "email" // Possible values: "email", "phone", "google"
+    val authProvider: String = "email", // Possible values: "email", "phone", "google"
+    val latitude: Double? = null,
+    val longitude: Double? = null,
+    val locationName: String = "",
 )
 
 class AuthViewModel : ViewModel() {
@@ -150,7 +152,7 @@ class AuthViewModel : ViewModel() {
                     "username" to newUsername,
                     "dateOfBirth" to newDateOfBirth,
                     "gender" to newGender,
-                    "genderSubcategory" to newGenderSubcategory
+
                 )
 
                 // Update Firestore
@@ -162,7 +164,7 @@ class AuthViewModel : ViewModel() {
                     username = newUsername,
                     dateOfBirth = newDateOfBirth,
                     gender = newGender,
-                    genderSubcategory = newGenderSubcategory
+
                 )
 
                 // Update local state
@@ -223,8 +225,8 @@ class AuthViewModel : ViewModel() {
     fun isProfileComplete(): Boolean {
         val user = _userData.value ?: return false
         return user.username.isNotBlank() &&
-               user.dateOfBirth.isNotBlank() &&
-               user.gender.isNotBlank()
+                user.dateOfBirth.isNotBlank() &&
+                user.gender.isNotBlank()
     }
 
     fun signInWithEmailPassword(email: String, password: String, onComplete: (Boolean) -> Unit) {
@@ -273,7 +275,6 @@ class AuthViewModel : ViewModel() {
                     profileImageUrl = profileImageUrl,
                     dateOfBirth = dateOfBirth,
                     gender = gender,
-                    genderSubcategory = genderSubcategory,
                     authProvider = "email"
                 )
 
@@ -361,7 +362,7 @@ class AuthViewModel : ViewModel() {
                     username = username,
                     dateOfBirth = dateOfBirth,
                     gender = gender,
-                    genderSubcategory = genderSubcategory,
+
                     profileImageUrl = profileImageUrl
                 ) ?: UserData(
                     username = username,
@@ -369,7 +370,7 @@ class AuthViewModel : ViewModel() {
                     userId = currentUser.uid,
                     dateOfBirth = dateOfBirth,
                     gender = gender,
-                    genderSubcategory = genderSubcategory,
+
                     profileImageUrl = profileImageUrl,
                     authProvider = currentData?.authProvider ?: "email"
                 )
@@ -416,7 +417,83 @@ class AuthViewModel : ViewModel() {
         _imageLoadState.value = ImageLoadState.Idle
     }
 
+    fun updateUserLocation(
+        latitude: Double,
+        longitude: Double,
+        locationName: String = "",
+        onComplete: (Boolean) -> Unit
+    ) {
+        viewModelScope.launch {
+            try {
+                _updateState.value = UpdateState.Loading
 
+                val currentUser = auth.currentUser ?: throw Exception("User not authenticated")
+                val userRef = firestore.collection("users").document(currentUser.uid)
+
+                val updates = hashMapOf<String, Any>(
+                    "latitude" to latitude,
+                    "longitude" to longitude
+                )
+                if (locationName.isNotEmpty()) {
+                    updates["locationName"] = locationName
+                }
+
+                userRef.update(updates).await()
+
+                // Update local state
+                _userData.value = _userData.value?.copy(
+                    latitude = latitude,
+                    longitude = longitude,
+                    locationName = if (locationName.isNotEmpty()) locationName else _userData.value?.locationName ?: ""
+                )
+
+                _updateState.value = UpdateState.Success
+                onComplete(true)
+            } catch (e: Exception) {
+                Log.e("AuthViewModel", "Error updating location", e)
+                _updateState.value = UpdateState.Error(e.message ?: "Failed to update location")
+                onComplete(false)
+            }
+        }
+    }
+
+    fun updateManualLocation(
+        locationName: String,
+        latitude: Double,
+        longitude: Double,
+        onComplete: (Boolean) -> Unit
+    ) {
+        viewModelScope.launch {
+            try {
+                _updateState.value = UpdateState.Loading
+
+                val currentUser = auth.currentUser ?: throw Exception("User not authenticated")
+                val userRef = firestore.collection("users").document(currentUser.uid)
+
+                val updates = hashMapOf(
+                    "locationName" to locationName,
+                    "latitude" to latitude,
+                    "longitude" to longitude
+                )
+
+                userRef.update(updates).await()
+
+                // Update local state
+                _userData.value = _userData.value?.copy(
+                    locationName = locationName,
+                    latitude = latitude,
+                    longitude = longitude
+                )
+
+                _updateState.value = UpdateState.Success
+                onComplete(true)
+            } catch (e: Exception) {
+                Log.e("AuthViewModel", "Error updating manual location", e)
+                _updateState.value = UpdateState.Error(e.message ?: "Failed to update location")
+                onComplete(false)
+            }
+        }
+    }
 
     fun validateSignUpFields(
         email: String,
@@ -426,23 +503,23 @@ class AuthViewModel : ViewModel() {
         dateOfBirth: String,
         gender: String
     ): Pair<Boolean, String> {
-        if (email.isBlank() || password.isBlank() || confirmPassword.isBlank() || 
+        if (email.isBlank() || password.isBlank() || confirmPassword.isBlank() ||
             username.isBlank() || dateOfBirth.isBlank() || gender.isBlank()) {
             return Pair(false, "All fields are required")
         }
-        
+
         if (!android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
             return Pair(false, "Please enter a valid email address")
         }
-        
+
         if (password != confirmPassword) {
             return Pair(false, "Passwords don't match")
         }
-        
+
         if (password.length < 8) {
             return Pair(false, "Password must be at least 8 characters long")
         }
-        
+
         return Pair(true, "")
     }
 }

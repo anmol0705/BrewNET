@@ -1,3 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Brew Net</string>
+    <!-- Replace this with your actual Web client ID from Firebase Console -->
+    <string name="default_web_client_id">376431641500-mutqsh6gjek89hvce4gdhvijlcb6fdl0.apps.googleusercontent.com</string>
 </resources>
