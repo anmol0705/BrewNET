@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "376431641500",
+    "project_id": "brew-net-b3dd5",
+    "storage_bucket": "brew-net-b3dd5.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:376431641500:android:fe9beb15a92937700f7e59",
+        "android_client_info": {
+          "package_name": "android.saswat.brewnet"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "376431641500-b8co3mclbgqs71dp5qaruj86f5093vq4.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "android.saswat.brewnet",
+            "certificate_hash": "275a43b679f838ac4a792c7373f5609ab94be2e0"
+          }
+        },
+        {
+          "client_id": "376431641500-mutqsh6gjek89hvce4gdhvijlcb6fdl0.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCSK3fBGR_5oGrPRrs50pRbjnrxHBiquko"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "376431641500-mutqsh6gjek89hvce4gdhvijlcb6fdl0.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
