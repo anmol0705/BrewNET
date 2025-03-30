@@ -10,7 +10,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -41,8 +43,14 @@ fun QualitiesScreen(
     val qualities = listOf(
         "Loyalty", "Open Minded", "Passionate", "Supportive",
         "Compassion", "Empowering", "Independent", "Creative",
-        "Balanced", "Confident", "Practical", "Humorous"
+        "Balanced", "Confident", "Practical", "Humorous",
+        "Dependable", "Curious", "Encouraging", "Playful",
+        "Driven", "Kind", "Trustworthy", "Self-Sufficient",
+        "Inspiring", "Down-to-Earth", "Energetic", "Enthusiastic",
+        "Thoughtful", "Considerate", "Assertive", "Innovative",
+        "Spontaneous", "Carefree", "Calm"
     )
+
 
     // Show error if exists
     LaunchedEffect(updateState) {
@@ -66,34 +74,65 @@ fun QualitiesScreen(
                 .padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Spacer(modifier = Modifier.height(48.dp))
+            // Fixed header section
+            Spacer(modifier = Modifier.height(32.dp))
 
             Text(
                 text = "Select The Qualities\nYou Value In A\nConnection ...",
-                fontSize = 28.sp,
+                fontSize = 24.sp,
                 fontWeight = FontWeight.Bold,
                 textAlign = TextAlign.Center,
-                lineHeight = 36.sp,
+                lineHeight = 32.sp,
                 color = Color(0xFF1A1C1E)
             )
 
-            Spacer(modifier = Modifier.height(48.dp))
+            Spacer(modifier = Modifier.height(32.dp))
 
-            // Interests wrapped in rows
-            Column(
+            // Scrollable bubbles section
+            Box(
                 modifier = Modifier
+                    .weight(1f) // Takes remaining space between header and button
                     .fillMaxWidth()
-                    .weight(1f),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                var currentRow = mutableListOf<String>()
-                var currentWidth = 0f
-                val maxWidth = 320f // Approximate screen width in dp
+                Column(
+                    modifier = Modifier
+                        .verticalScroll(rememberScrollState())
+                        .fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    var currentRow = mutableListOf<String>()
+                    var currentWidth = 0f
+                    val maxWidth = 320f
 
-                qualities.forEach { qualities ->
-                    val itemWidth = (qualities.length * 10 + 40).toFloat() // Approximate width of each bubble
-                    if (currentWidth + itemWidth > maxWidth) {
-                        // Create a row with current items
+                    qualities.forEach { qualities ->
+                        val itemWidth = (qualities.length * 11 + 44).toFloat()
+                        if (currentWidth + itemWidth > maxWidth) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.Center,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                currentRow.forEach { rowItem ->
+                                    QualitiesBubble(
+                                        text = rowItem,
+                                        isSelected = qualititesMap[rowItem] == true,
+                                        onClick = {
+                                            qualititesMap[rowItem] = qualititesMap[rowItem] != true
+                                        }
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                }
+                            }
+                            currentRow.clear()
+                            currentWidth = itemWidth
+                            currentRow.add(qualities)
+                        } else {
+                            currentRow.add(qualities)
+                            currentWidth += itemWidth
+                        }
+                    }
+
+                    if (currentRow.isNotEmpty()) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.Center,
@@ -110,40 +149,15 @@ fun QualitiesScreen(
                                 Spacer(modifier = Modifier.width(8.dp))
                             }
                         }
-                        Spacer(modifier = Modifier.height(8.dp))
-                        currentRow.clear()
-                        currentWidth = itemWidth
-                        currentRow.add(qualities)
-                    } else {
-                        currentRow.add(qualities)
-                        currentWidth += itemWidth
-                    }
-                }
-
-                // Add remaining items
-                if (currentRow.isNotEmpty()) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.Center,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        currentRow.forEach { rowItem ->
-                            QualitiesBubble(
-                                text = rowItem,
-                                isSelected = qualititesMap[rowItem] == true,
-                                onClick = {
-                                    qualititesMap[rowItem] = qualititesMap[rowItem] != true
-                                }
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                        }
                     }
                 }
             }
 
+            Spacer(modifier = Modifier.height(32.dp))
+
             Button(
                 onClick = {
-                        viewModel.updateUserQualities(qualititesMap.toMap()) { success ->
+                    viewModel.updateUserQualities(qualititesMap.toMap()) { success ->
                         if (success) {
                             navController.navigate(Screens.Interests.route) {
                                 popUpTo(0)
@@ -214,16 +228,18 @@ private fun QualitiesBubble(
     ) {
         Text(
             text = text,
-            modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
+            modifier = Modifier.padding(horizontal = 18.dp, vertical = 10.dp),
             color = if (isSelected) Color.White else Color(0xFF1A1C1E),
             fontSize = 14.sp,
-            fontWeight = if (isSelected) FontWeight.Medium else FontWeight.Normal
+            fontWeight = if (isSelected) FontWeight.Medium else FontWeight.Normal,
+            maxLines = 1,
+            softWrap = false
         )
     }
 }
+
 @Preview
 @Composable
-@Preview
 fun PreviewInterestBubble() {
     QualitiesScreen(
         navController = rememberNavController(),

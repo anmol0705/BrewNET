@@ -12,6 +12,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -28,6 +29,8 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.navigation.compose.rememberNavController
 
 @Composable
 fun InterestsScreen(
@@ -39,6 +42,7 @@ fun InterestsScreen(
     val context = LocalContext.current
 
     // Available interests with their icons
+
     val interests = listOf(
         InterestItem("Reading", R.drawable.round_menu_book_24),
         InterestItem("Photography", R.drawable.outline_camera_24),
@@ -51,8 +55,23 @@ fun InterestsScreen(
         InterestItem("Cooking", R.drawable.baseline_dining_24),
         InterestItem("Pets", R.drawable.baseline_pets_24),
         InterestItem("Sports", R.drawable.baseline_sports_score_24),
-        InterestItem("Fashion", R.drawable.baseline_dry_cleaning_24)
+        InterestItem("Fashion", R.drawable.baseline_dry_cleaning_24),
+        InterestItem("Movies & TV Shows", R.drawable.baseline_movie_24),
+        InterestItem("Personal Development", R.drawable.baseline_psychology_24),
+        InterestItem("Sustainability", R.drawable.baseline_grass_24),
+        InterestItem("Volunteering", R.drawable.baseline_volunteer_activism_24),
+        InterestItem("Finance & Investing", R.drawable.baseline_savings_24),
+        InterestItem("Science & Technology", R.drawable.baseline_science_24),
+        InterestItem("Fitness & Yoga", R.drawable.baseline_fitness_center_24),
+        InterestItem("Dance & Performing Arts", R.drawable.baseline_theater_comedy_24),
+        InterestItem("History & Culture", R.drawable.baseline_history_edu_24),
+        InterestItem("Languages & Linguistics", R.drawable.baseline_translate_24),
+        InterestItem("Podcasts & Audiobooks", R.drawable.baseline_podcasts_24),
+        InterestItem("Cars & Motorcycles", R.drawable.baseline_directions_car_24),
+        InterestItem("DIY & Crafts", R.drawable.baseline_construction_24),
+        InterestItem("Health & Nutrition", R.drawable.baseline_health_and_safety_24)
     )
+
 
     // Show error if exists
     LaunchedEffect(updateState) {
@@ -89,21 +108,49 @@ fun InterestsScreen(
 
             Spacer(modifier = Modifier.height(48.dp))
 
-            // Interests in a FlowRow-like arrangement
-            Column(
+            LazyColumn(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                var currentRow = mutableListOf<InterestItem>()
-                var currentWidth = 0f
-                val maxWidth = 280f // Adjusted for tighter packing
+                item {
+                    var currentRow = mutableListOf<InterestItem>()
+                    var currentWidth = 0f
+                    val maxWidth = 280f
 
-                interests.forEach { interest ->
-                    val itemWidth = (interest.text.length * 10 + 64).toFloat() // Account for icon
-                    if (currentWidth + itemWidth > maxWidth) {
-                        // Create a row with current items
+                    interests.forEach { interest ->
+                        val itemWidth = (interest.text.length * 10 + 64).toFloat()
+                        if (currentWidth + itemWidth > maxWidth) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.Center,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                currentRow.forEach { rowItem ->
+                                    InterestBubble(
+                                        text = rowItem.text,
+                                        iconResId = rowItem.iconResId,
+                                        isSelected = interestsMap[rowItem.text] == true,
+                                        onClick = {
+                                            interestsMap[rowItem.text] = !(interestsMap[rowItem.text] ?: false)
+                                        }
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                }
+                            }
+                            Spacer(modifier = Modifier.height(12.dp))
+                            currentRow.clear()
+                            currentWidth = itemWidth
+                            currentRow.add(interest)
+                        } else {
+                            currentRow.add(interest)
+                            currentWidth += itemWidth
+                        }
+                    }
+
+                    if (currentRow.isNotEmpty()) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.Center,
@@ -121,34 +168,6 @@ fun InterestsScreen(
                                 Spacer(modifier = Modifier.width(8.dp))
                             }
                         }
-                        Spacer(modifier = Modifier.height(12.dp))
-                        currentRow.clear()
-                        currentWidth = itemWidth
-                        currentRow.add(interest)
-                    } else {
-                        currentRow.add(interest)
-                        currentWidth += itemWidth
-                    }
-                }
-
-                // Add remaining items
-                if (currentRow.isNotEmpty()) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.Center,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        currentRow.forEach { rowItem ->
-                            InterestBubble(
-                                text = rowItem.text,
-                                iconResId = rowItem.iconResId,
-                                isSelected = interestsMap[rowItem.text] == true,
-                                onClick = {
-                                    interestsMap[rowItem.text] = !(interestsMap[rowItem.text] ?: false)
-                                }
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                        }
                     }
                 }
             }
@@ -157,7 +176,7 @@ fun InterestsScreen(
                 onClick = {
                     viewModel.updateUserInterests(interestsMap.toMap()) { success ->
                         if (success) {
-                            navController.navigate(Screens.VerificationSuccess.route) {
+                            navController.navigate(Screens.MainScreen.route) {
                                 popUpTo(0)
                             }
                         }
@@ -250,4 +269,9 @@ private fun InterestBubble(
             )
         }
     }
+}
+@Preview
+@Composable
+fun InterestPreview() {
+    InterestsScreen(navController = rememberNavController(), viewModel = viewModel())
 }

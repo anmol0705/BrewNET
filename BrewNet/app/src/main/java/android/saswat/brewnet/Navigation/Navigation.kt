@@ -5,8 +5,10 @@ import android.saswat.brewnet.screens.Screens
 import android.saswat.brewnet.mainscreens.AgeSelectionScreen
 import android.saswat.brewnet.mainscreens.GenderSelectionScreen
 import android.saswat.brewnet.mainscreens.LocationScreen
+import android.saswat.brewnet.mainscreens.MainScreen
 import android.saswat.brewnet.mainscreens.ManualLocationScreen
 import android.saswat.brewnet.mainscreens.PhotosScreen
+import android.saswat.brewnet.mainscreens.UserNameScreen
 import android.saswat.brewnet.questions.BrewNetPurposeScreen
 import android.saswat.brewnet.questions.ConnectionTypeScreen
 import android.saswat.brewnet.questions.InterestsScreen
@@ -16,7 +18,13 @@ import android.saswat.brewnet.ui.signInandSignUp.SignInScreen
 import android.saswat.brewnet.ui.signInandSignUp.SignUpScreen
 import android.saswat.brewnet.ui.signInandSignUp.SuccessScreen
 import android.saswat.viewModel.AuthViewModel
+import android.saswat.viewModel.ChatViewModel
+import android.saswat.viewModel.LocationViewModel
 import android.saswat.viewModel.PhoneAuthViewModel
+import android.saswat.viewModel.UserCardViewModel
+import android.saswat.brewnet.chat.ChatListScreen
+import android.saswat.brewnet.chat.ChatDetailScreen
+import android.saswat.brewnet.chat.SimpleDirectChatScreen
 import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
@@ -32,6 +40,9 @@ fun Navigation(navController: NavHostController) {
     // Initialize view models at the navigation level
     val phoneAuthViewModel: PhoneAuthViewModel = viewModel()
     val authViewModel: AuthViewModel = viewModel()
+    val locationViewModel: LocationViewModel = viewModel()
+    val userCardViewModel: UserCardViewModel = viewModel()
+    val chatViewModel: ChatViewModel = viewModel()
 
     NavHost(
         navController = navController,
@@ -209,7 +220,8 @@ fun Navigation(navController: NavHostController) {
                         newUsername = authViewModel.userData.value?.username ?: "",
                         newDateOfBirth = age.toString(),
                         newGender = authViewModel.userData.value?.gender ?: "",
-                        newGenderSubcategory = ""
+                        newGenderSubcategory =  "",
+                        newBio = authViewModel.userData.value?.bio ?: ""
                     )
                     navController.navigate(Screens.GenderSelection.route) {
                         popUpTo(Screens.SignUpScreen.route) { inclusive = true }
@@ -252,7 +264,8 @@ fun Navigation(navController: NavHostController) {
                         newUsername = authViewModel.userData.value?.username ?: "",
                         newDateOfBirth = authViewModel.userData.value?.dateOfBirth ?: "",
                         newGender = gender,
-                        newGenderSubcategory = ""
+                        newGenderSubcategory = "",
+                        newBio = authViewModel.userData.value?.bio ?: ""
                     )
                     navController.navigate(Screens.PhotosScreen.route) {
                         popUpTo(Screens.SignUpScreen.route) { inclusive = true }
@@ -518,7 +531,188 @@ fun Navigation(navController: NavHostController) {
                 navController = navController
             )
         }
+        composable(
+            route = Screens.MainScreen.route,
+            enterTransition = {
+                slideIntoContainer(
+                    AnimatedContentTransitionScope.SlideDirection.Left,
+                    animationSpec = tween(300)
+                )
+            },
+            exitTransition = {
+                slideOutOfContainer(
+                    AnimatedContentTransitionScope.SlideDirection.Left,
+                    animationSpec = tween(300)
+                )
+            },
+            popEnterTransition = {
+                slideIntoContainer(
+                    AnimatedContentTransitionScope.SlideDirection.Right,
+                    animationSpec = tween(300)
+                )
+            },
+            popExitTransition = {
+                slideOutOfContainer(
+                    AnimatedContentTransitionScope.SlideDirection.Right,
+                    animationSpec = tween(300)
+                )
+            }
+        ) {
+            MainScreen(
+                navController = navController,
+                authViewModel = authViewModel,
+                locationViewModel = locationViewModel,
+                userCardViewModel = userCardViewModel
+            )
+        }
 
+        composable(
+            route = Screens.Username.route,
+            enterTransition = {
+                slideIntoContainer(
+                    AnimatedContentTransitionScope.SlideDirection.Left,
+                    animationSpec = tween(300)
+                )
+            },
+            exitTransition = {
+                slideOutOfContainer(
+                    AnimatedContentTransitionScope.SlideDirection.Left,
+                    animationSpec = tween(300)
+                )
+            },
+            popEnterTransition = {
+                slideIntoContainer(
+                    AnimatedContentTransitionScope.SlideDirection.Right,
+                    animationSpec = tween(300)
+                )
+            },
+            popExitTransition = {
+                slideOutOfContainer(
+                    AnimatedContentTransitionScope.SlideDirection.Right,
+                    animationSpec = tween(300)
+                )
+            }
+        ) {
+            UserNameScreen(
+                navController = navController,
+                authViewModel = authViewModel,
+                onNavigateNext = { navController.navigate(Screens.AgeSelection.route) }
+            )
+        }
 
+        composable(
+            route = Screens.Chat.route,
+            enterTransition = {
+                slideIntoContainer(
+                    AnimatedContentTransitionScope.SlideDirection.Left,
+                    animationSpec = tween(300)
+                )
+            },
+            exitTransition = {
+                slideOutOfContainer(
+                    AnimatedContentTransitionScope.SlideDirection.Left,
+                    animationSpec = tween(300)
+                )
+            },
+            popEnterTransition = {
+                slideIntoContainer(
+                    AnimatedContentTransitionScope.SlideDirection.Right,
+                    animationSpec = tween(300)
+                )
+            },
+            popExitTransition = {
+                slideOutOfContainer(
+                    AnimatedContentTransitionScope.SlideDirection.Right,
+                    animationSpec = tween(300)
+                )
+            }
+        ) {
+            // Get the current user ID from AuthViewModel
+            val currentUserId = authViewModel.userData.value?.userId ?: ""
+            ChatListScreen(
+                navController = navController,
+                userId = currentUserId,
+                chatViewModel = chatViewModel
+            )
+        }
+
+        composable(
+            route = Screens.ChatDetail.route,
+            arguments = listOf(
+                navArgument("otherUserId") { type = NavType.StringType }
+            ),
+            enterTransition = {
+                slideIntoContainer(
+                    AnimatedContentTransitionScope.SlideDirection.Left,
+                    animationSpec = tween(300)
+                )
+            },
+            exitTransition = {
+                slideOutOfContainer(
+                    AnimatedContentTransitionScope.SlideDirection.Left,
+                    animationSpec = tween(300)
+                )
+            },
+            popEnterTransition = {
+                slideIntoContainer(
+                    AnimatedContentTransitionScope.SlideDirection.Right,
+                    animationSpec = tween(300)
+                )
+            },
+            popExitTransition = {
+                slideOutOfContainer(
+                    AnimatedContentTransitionScope.SlideDirection.Right,
+                    animationSpec = tween(300)
+                )
+            }
+        ) { backStackEntry ->
+            val otherUserId = backStackEntry.arguments?.getString("otherUserId") ?: ""
+            val currentUserId = authViewModel.userData.value?.userId ?: ""
+            ChatDetailScreen(
+                navController = navController,
+                chatViewModel = chatViewModel,
+                otherUserId = otherUserId,
+                currentUserId = currentUserId
+            )
+        }
+
+        composable(
+            route = Screens.SimpleChat.route,
+            arguments = listOf(
+                navArgument("otherUserId") { type = NavType.StringType }
+            ),
+            enterTransition = {
+                slideIntoContainer(
+                    AnimatedContentTransitionScope.SlideDirection.Left,
+                    animationSpec = tween(300)
+                )
+            },
+            exitTransition = {
+                slideOutOfContainer(
+                    AnimatedContentTransitionScope.SlideDirection.Left,
+                    animationSpec = tween(300)
+                )
+            },
+            popEnterTransition = {
+                slideIntoContainer(
+                    AnimatedContentTransitionScope.SlideDirection.Right,
+                    animationSpec = tween(300)
+                )
+            },
+            popExitTransition = {
+                slideOutOfContainer(
+                    AnimatedContentTransitionScope.SlideDirection.Right,
+                    animationSpec = tween(300)
+                )
+            }
+        ) { backStackEntry ->
+            val otherUserId = backStackEntry.arguments?.getString("otherUserId") ?: ""
+            val currentUserId = authViewModel.userData.value?.userId ?: ""
+            SimpleDirectChatScreen(
+                navController = navController,
+                otherUserId = otherUserId,
+                currentUserId = currentUserId
+            )
+        }
     }
 }

@@ -57,7 +57,7 @@ fun SignUpScreen(
     LaunchedEffect(authState) {
         when (authState) {
             is AuthState.Success -> {
-                navController.navigate(Screens.AgeSelection.route) {
+                navController.navigate(Screens.Username.route) {
                     popUpTo(Screens.SignUpScreen.route) { inclusive = true }
                 }
             }
@@ -106,7 +106,12 @@ fun SignUpScreen(
                 account?.idToken?.let { token ->
                     authViewModel.handleGoogleSignInResult(token) { success ->
                         isLoading = false
-                        if (!success) {
+                        if (success) {
+                            // Navigate to Username screen after successful Google sign-in
+                            navController.navigate(Screens.Username.route) {
+                                popUpTo(Screens.SignUpScreen.route) { inclusive = true }
+                            }
+                        } else {
                             errorMessage = "Failed to authenticate with Google"
                         }
                     }

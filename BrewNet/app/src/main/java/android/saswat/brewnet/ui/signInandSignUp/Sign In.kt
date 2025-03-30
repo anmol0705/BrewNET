@@ -84,14 +84,14 @@ fun SignInScreen(
             is AuthState.Success -> {
                 Log.d("SignInScreen", "Auth success, navigating to success screen")
                 isLoading = false
-                navController.navigate(Screens.AgeSelection.route) {
+                navController.navigate(Screens.MainScreen.route) {
                     popUpTo(Screens.SignInScreen.route) { inclusive = true }
                 }
             }
             is AuthState.NeedsProfileCompletion -> {
                 Log.d("SignInScreen", "Profile completion needed")
                 isLoading = false
-                navController.navigate(Screens.AgeSelection.route) {
+                navController.navigate(Screens.MainScreen.route) {
                     popUpTo(Screens.SignInScreen.route) { inclusive = true }
                 }
             }

@@ -42,7 +42,8 @@ data class UserData(
     val interests: Map<String, Boolean> = mapOf(), 
     val isOnline: Boolean = false,
     val lastActive: Long = System.currentTimeMillis(),
-    val locationUpdatedAt: Long = System.currentTimeMillis()
+    val locationUpdatedAt: Long = System.currentTimeMillis(),
+    val bio: String? = null
 )
 
 class AuthViewModel : ViewModel() {
@@ -147,7 +148,7 @@ class AuthViewModel : ViewModel() {
         return sampleSize
     }
 
-    fun updateUserData(newUsername: String, newDateOfBirth: String, newGender: String, newGenderSubcategory: String) {
+    fun updateUserData(newUsername: String, newDateOfBirth: String, newGender: String, newGenderSubcategory: String, newBio: String) {
         viewModelScope.launch {
             try {
                 _updateState.value = UpdateState.Loading
@@ -159,7 +160,7 @@ class AuthViewModel : ViewModel() {
                     "username" to newUsername,
                     "dateOfBirth" to newDateOfBirth,
                     "gender" to newGender,
-
+                    "bio" to newBio
                 )
 
                 // Update Firestore
@@ -171,7 +172,7 @@ class AuthViewModel : ViewModel() {
                     username = newUsername,
                     dateOfBirth = newDateOfBirth,
                     gender = newGender,
-
+                    bio = newBio
                 )
 
                 // Update local state
@@ -192,14 +193,25 @@ class AuthViewModel : ViewModel() {
                 _updateState.value = UpdateState.Loading
 
                 val currentUser = auth.currentUser ?: throw Exception("User not authenticated")
+                
+                // Add log statements to track what's happening
+                Log.d("AuthViewModel", "Starting profile image update for user: ${currentUser.uid}")
+                
                 val profileImageUrl = uploadProfileImage(currentUser.uid, imageUri)
+                Log.d("AuthViewModel", "Image uploaded successfully, URL: $profileImageUrl")
 
                 // Update Firestore with new image URL
                 val userRef = firestore.collection("users").document(currentUser.uid)
-                userRef.update("profileImageUrl", profileImageUrl).await()
+                
+                // Use set with merge option instead of update to ensure the field is created if it doesn't exist
+                val updates = mapOf("profileImageUrl" to profileImageUrl)
+                userRef.set(updates, com.google.firebase.firestore.SetOptions.merge()).await()
+                
+                Log.d("AuthViewModel", "Firestore document updated with new image URL")
 
                 // Update local state
                 _userData.value = _userData.value?.copy(profileImageUrl = profileImageUrl)
+                Log.d("AuthViewModel", "Local user data updated with URL: ${_userData.value?.profileImageUrl}")
 
                 _updateState.value = UpdateState.Success
                 onComplete(true)
@@ -233,7 +245,8 @@ class AuthViewModel : ViewModel() {
         val user = _userData.value ?: return false
         return user.username.isNotBlank() &&
                 user.dateOfBirth.isNotBlank() &&
-                user.gender.isNotBlank()
+                user.gender.isNotBlank() &&
+                user.bio != null
     }
 
     fun signInWithEmailPassword(email: String, password: String, onComplete: (Boolean) -> Unit) {
@@ -342,6 +355,7 @@ class AuthViewModel : ViewModel() {
         dateOfBirth: String,
         gender: String,
         genderSubcategory: String,
+        bio: String,
         profileImageUri: Uri? = null,
         onComplete: (Boolean) -> Unit
     ) {
@@ -350,11 +364,13 @@ class AuthViewModel : ViewModel() {
                 _updateState.value = UpdateState.Loading
 
                 val currentUser = auth.currentUser ?: throw Exception("User not authenticated")
+                Log.d("AuthViewModel", "Completing profile for user: ${currentUser.uid}")
 
                 // Upload profile image if provided
                 var profileImageUrl = _userData.value?.profileImageUrl ?: ""
                 if (profileImageUri != null) {
                     profileImageUrl = uploadProfileImage(currentUser.uid, profileImageUri)
+                    Log.d("AuthViewModel", "Profile image uploaded with URL: $profileImageUrl")
                 }
 
                 val userRef = firestore.collection("users").document(currentUser.uid)
@@ -365,7 +381,7 @@ class AuthViewModel : ViewModel() {
                     username = username,
                     dateOfBirth = dateOfBirth,
                     gender = gender,
-
+                    bio = bio,
                     profileImageUrl = profileImageUrl
                 ) ?: UserData(
                     username = username,
@@ -373,15 +389,18 @@ class AuthViewModel : ViewModel() {
                     userId = currentUser.uid,
                     dateOfBirth = dateOfBirth,
                     gender = gender,
-
+                    bio = bio,
                     profileImageUrl = profileImageUrl,
                     authProvider = currentData?.authProvider ?: "email"
                 )
 
+                // Use set instead of update to ensure all fields are properly updated
                 userRef.set(updatedData).await()
+                Log.d("AuthViewModel", "User profile completed and saved with imageUrl: $profileImageUrl")
 
                 // Update local state
                 _userData.value = updatedData
+                Log.d("AuthViewModel", "Local state updated with imageUrl: ${_userData.value?.profileImageUrl}")
 
                 _updateState.value = UpdateState.Success
                 onComplete(true)

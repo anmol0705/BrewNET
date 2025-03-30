@@ -37,6 +37,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.CircularProgressIndicator
 import kotlinx.coroutines.launch
+import com.google.firebase.firestore.FirebaseFirestore
 
 @Composable
 fun PhotosScreen(
@@ -248,34 +249,57 @@ private fun uploadPhotosToFirebase(
 ) {
     val storage = FirebaseStorage.getInstance()
     val userId = FirebaseAuth.getInstance().currentUser?.uid ?: return
-
-    val mainPhotoRef = storage.reference.child("users/$userId/photos/main.jpg")
+    val firestore = FirebaseFirestore.getInstance()
+    
+    val mainPhotoRef = storage.reference.child("profile_images/$userId")
     
     mainPhotoRef.putFile(mainPhoto)
         .addOnSuccessListener {
-            var uploadedCount = 0
-            val totalAdditionalPhotos = additionalPhotos.size
-            
-            if (totalAdditionalPhotos == 0) {
-                onComplete(true)
-                return@addOnSuccessListener
-            }
-
-            additionalPhotos.forEachIndexed { index, uri ->
-                val photoRef = storage.reference.child("users/$userId/photos/additional_$index.jpg")
-                photoRef.putFile(uri)
+            // Get the download URL after uploading
+            mainPhotoRef.downloadUrl.addOnSuccessListener { downloadUrl ->
+                // Update the user's profileImageUrl in Firestore
+                val userRef = firestore.collection("users").document(userId)
+                
+                // Use set with merge to ensure the field is updated properly
+                val updates = mapOf("profileImageUrl" to downloadUrl.toString())
+                userRef.set(updates, com.google.firebase.firestore.SetOptions.merge())
                     .addOnSuccessListener {
-                        uploadedCount++
-                        if (uploadedCount == totalAdditionalPhotos) {
+                        android.util.Log.d("PhotosScreen", "Updated user profile with image URL: ${downloadUrl}")
+                        
+                        var uploadedCount = 0
+                        val totalAdditionalPhotos = additionalPhotos.size
+                        
+                        if (totalAdditionalPhotos == 0) {
                             onComplete(true)
+                            return@addOnSuccessListener
+                        }
+
+                        additionalPhotos.forEachIndexed { index, uri ->
+                            val photoRef = storage.reference.child("users/$userId/photos/additional_$index.jpg")
+                            photoRef.putFile(uri)
+                                .addOnSuccessListener {
+                                    uploadedCount++
+                                    if (uploadedCount == totalAdditionalPhotos) {
+                                        onComplete(true)
+                                    }
+                                }
+                                .addOnFailureListener {
+                                    onComplete(false)
+                                }
                         }
                     }
-                    .addOnFailureListener {
+                    .addOnFailureListener { exception ->
+                        android.util.Log.e("PhotosScreen", "Failed to update user with image URL", exception)
                         onComplete(false)
                     }
             }
+            .addOnFailureListener { exception ->
+                android.util.Log.e("PhotosScreen", "Failed to get download URL", exception)
+                onComplete(false)
+            }
         }
-        .addOnFailureListener {
+        .addOnFailureListener { exception ->
+            android.util.Log.e("PhotosScreen", "Failed to upload main photo", exception)
             onComplete(false)
         }
 }

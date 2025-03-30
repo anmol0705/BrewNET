@@ -5,19 +5,19 @@
       <SelectionState runConfigName="app">
         <option name="selectionMode" value="DROPDOWN" />
       </SelectionState>
-      <SelectionState runConfigName="SignInScreenPreview">
+      <SelectionState runConfigName="PreviewInterestBubble (1)">
         <option name="selectionMode" value="DROPDOWN" />
       </SelectionState>
-      <SelectionState runConfigName="PreviewGenderScreen">
+      <SelectionState runConfigName="InterestPreview">
         <option name="selectionMode" value="DROPDOWN" />
       </SelectionState>
-      <SelectionState runConfigName="BrewNetPurposePreview">
+      <SelectionState runConfigName="PreviewComposable">
         <option name="selectionMode" value="DROPDOWN" />
       </SelectionState>
-      <SelectionState runConfigName="PreviewConnectionType">
+      <SelectionState runConfigName="UsernamePreview">
         <option name="selectionMode" value="DROPDOWN" />
       </SelectionState>
-      <SelectionState runConfigName="PreviewInterestBubble">
+      <SelectionState runConfigName="PreviewAgeItem">
         <option name="selectionMode" value="DROPDOWN" />
       </SelectionState>
     </selectionStates>
