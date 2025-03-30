@@ -22,17 +22,32 @@ except OSError:
     sys.exit(1)
 sid = SentimentIntensityAnalyzer()
 
-# Define dictionaries
 interests_dict = {
     "sports": ["sports", "hiking", "gym", "exercise", "yoga"],
     "dining": ["dining", "food", "restaurant", "meal"],
     "movies": ["movie", "tv", "film", "show"],
     "art": ["art", "museum", "theater", "concert"],
-    "reading": ["book", "read", "literature", "novel"],
+    "reading": ["book", "read", "literature", "novel", "poetry", "nonfiction"],
     "music": ["music", "concert", "symphony"],
     "clubbing": ["club", "dance", "nightlife"],
     "shopping": ["shopping", "retail"],
-    "gaming": ["gaming", "game", "video game"]
+    "gaming": ["gaming", "game", "video game", "board game", "card game"],
+    "fashion": ["fashion", "style", "clothing", "accessories", "trend"],
+    "wellness": ["wellness", "meditation", "mindfulness", "mental health", "self-improvement"],
+    "sustainability": ["sustainability", "environment", "eco-friendly", "green living", "climate"],
+    "photography": ["photography", "videography", "content creation", "photo", "video"],
+    "volunteering": ["volunteer", "community", "charity", "helping"],
+    "finance": ["finance", "investing", "stocks", "crypto", "real estate", "money"],
+    "science": ["science", "technology", "scientific", "tech", "discovery"],
+    "pets": ["pet", "animal", "dog", "cat", "rescue"],
+    "fitness": ["fitness", "exercise", "workout", "yoga", "gym"],
+    "dance": ["dance", "performing arts", "theater", "performance"],
+    "history": ["history", "culture", "historical", "tradition"],
+    "languages": ["language", "linguistics", "grammar", "bilingual"],
+    "podcasts": ["podcast", "audiobook"],
+    "cars": ["car", "motorcycle", "vehicle", "riding", "restoration"],
+    "diy": ["diy", "craft", "handmade", "home improvement", "upcycling"],
+    "nutrition": ["nutrition", "health", "diet", "eating", "holistic"]
 }
 
 traits_dict = {
@@ -40,12 +55,45 @@ traits_dict = {
     "intelligence": ["smart", "intelligent", "brain", "wise"],
     "humor": ["funny", "humor", "wit", "laugh"],
     "sincerity": ["sincere", "honest", "genuine", "authentic"],
-    "ambition": ["ambitious", "driven", "goals"]
+    "ambition": ["ambitious", "driven", "goals"],
+    "loyalty": ["loyal", "dependable", "count on", "reliable"],
+    "curiosity": ["curious", "open-minded", "learning", "exploring", "perspective"],
+    "supportiveness": ["supportive", "encouraging", "motivate", "helps"],
+    "playfulness": ["playful", "humorous", "fun", "laugh", "joke"],
+    "passion": ["passionate", "driven", "enthusiasm", "determination"],
+    "kindness": ["kind", "compassionate", "empathy", "caring"],
+    "trustworthiness": ["trustworthy", "keeps word", "honest", "dependable"],
+    "independence": ["independent", "self-sufficient", "self-reliant"],
+    "empowerment": ["empowering", "inspiring", "motivates", "lifts up"],
+    "practicality": ["practical", "down-to-earth", "realistic"],
+    "energy": ["energetic", "enthusiastic", "excitement", "adventure"],
+    "thoughtfulness": ["thoughtful", "considerate", "feelings", "needs"],
+    "assertiveness": ["assertive", "confident", "go after"],
+    "creativity": ["creative", "innovative", "outside the box", "fresh ideas"],
+    "spontaneity": ["spontaneous", "carefree", "moment", "chance"],
+    "balance": ["balanced", "calm", "stability", "peace"]
 }
 
-preferences_dict = traits_dict.copy()
-preferences_dict["shared_interests"] = ["shared", "common", "similar", "hobby"]
-preferences_dict["religion"] = ["religion", "faith", "belief", "spiritual"]
+preferences_dict = {
+    "shared_interests": ["shared", "common", "similar", "hobby"],
+    "religion": ["religion", "faith", "belief", "spiritual"],
+    "loyalty_pref": ["loyal", "dependable", "count on"],
+    "curiosity_pref": ["curious", "open-minded", "learning"],
+    "supportiveness_pref": ["supportive", "encouraging", "motivate"],
+    "playfulness_pref": ["playful", "humorous", "fun"],
+    "passion_pref": ["passionate", "driven", "enthusiasm"],
+    "kindness_pref": ["kind", "compassionate", "caring"],
+    "trustworthiness_pref": ["trustworthy", "honest", "dependable"],
+    "independence_pref": ["independent", "self-sufficient"],
+    "empowerment_pref": ["empowering", "inspiring", "motivates"],
+    "practicality_pref": ["practical", "down-to-earth"],
+    "energy_pref": ["energetic", "enthusiastic", "excitement"],
+    "thoughtfulness_pref": ["thoughtful", "considerate"],
+    "assertiveness_pref": ["assertive", "confident"],
+    "creativity_pref": ["creative", "innovative"],
+    "spontaneity_pref": ["spontaneous", "carefree"],
+    "balance_pref": ["balanced", "calm", "stability"]
+}
 
 intensity_modifiers = {
     "love": 1.5, "obsessed": 2.0, "passionate": 1.5, "enjoy": 1.2, "like": 1.0,
@@ -98,22 +146,54 @@ def extract_traits(text):
 
 def extract_preferences(text):
     doc = preprocess(text)
-    preferences = {pref: pd.NA for pref in ["shared_interests", "humor", "attractiveness", "intelligence", "ambition", "religion"]}
+    preferences = {
+        # Original preferences
+        "shared_interests": pd.NA,
+        "religion": pd.NA,
+        
+        # Personality preferences (note we're using the same names as in traits_dict)
+        "humor": pd.NA,
+        "loyalty": pd.NA,
+        "curiosity": pd.NA,
+        "supportiveness": pd.NA,
+        "playfulness": pd.NA,
+        "passion": pd.NA,
+        "kindness": pd.NA,
+        "trustworthiness": pd.NA,
+        "independence": pd.NA,
+        "empowerment": pd.NA,
+        "practicality": pd.NA,
+        "energy": pd.NA,
+        "thoughtfulness": pd.NA,
+        "assertiveness": pd.NA,
+        "creativity": pd.NA,
+        "spontaneity": pd.NA,
+        "balance": pd.NA
+    }
+    
     text_lower = str(text).lower()
+    
+    # Check for shared interests and religion first
+    if any(keyword in text_lower for keyword in preferences_dict["shared_interests"]):
+        preferences["shared_interests"] = "Yes"
     if any(keyword in text_lower for keyword in preferences_dict["religion"]):
         preferences["religion"] = "Religious"
+    
+    # Check for personality preferences
     for sentence in doc.sents:
         sent_text = sentence.text.lower()
-        if "shared" in sent_text and ("interest" in sent_text or "hobby" in sent_text):
-            preferences["shared_interests"] = "Yes"
         for trait, keywords in preferences_dict.items():
-            if trait not in ["shared_interests", "religion"] and any(keyword in sent_text for keyword in keywords):
-                preferences[trait] = "Yes"
+            if trait not in ["shared_interests", "religion"]:
+                if any(keyword in sent_text for keyword in keywords):
+                    # Use the base trait name without _pref suffix
+                    pref_name = trait.replace("_pref", "")
+                    preferences[pref_name] = "Yes"
+    
     return preferences
 
 # Load and Process Data
-bio_path = Path("bio.csv")
-looking_for_path = Path("looking_for.csv")
+bio_path = Path("C:/Users/risha/Downloads/bio.csv")
+looking_for_path = Path("C:/Users/risha/Downloads/looking_for.csv")
 
 for path in [bio_path, looking_for_path]:
     if not path.exists():
@@ -219,30 +299,48 @@ for _, row in feedback_data.iterrows():
 def compute_preference_score(row1, row2):
     score = 0
     total_checks = 0
+    
+    # Shared interests check
     if row1["pref_shared_interests"] == "Yes" and row2["pref_shared_interests"] == "Yes":
         score += 1
     elif row1["pref_shared_interests"] == "Yes" or row2["pref_shared_interests"] == "Yes":
         score += 0.5
     total_checks += 1
     
-    trait_pref_map = {
-        "pref_humor": "trait_humor", "pref_attractiveness": "trait_attractiveness",
-        "pref_intelligence": "trait_intelligence", "pref_ambition": "trait_ambition"
-    }
-    for pref_col, trait_col in trait_pref_map.items():
-        if row1[pref_col] == "Yes":
-            score += 1 if row2[trait_col] >= 7 else 0
-            total_checks += 1
-        if row2[pref_col] == "Yes":
-            score += 1 if row1[trait_col] >= 7 else 0
-            total_checks += 1
-    
+    # Religion compatibility
     religion1, religion2 = row1["pref_religion"], row2["pref_religion"]
     if pd.notna(religion1) and pd.notna(religion2):
         score += 1
     elif pd.isna(religion1) and pd.isna(religion2):
         score += 1
     total_checks += 1
+    
+    # Personality preference checks
+    personality_traits = [
+        "humor", "loyalty", "curiosity", "supportiveness", "playfulness",
+        "passion", "kindness", "trustworthiness", "independence",
+        "empowerment", "practicality", "energy", "thoughtfulness",
+        "assertiveness", "creativity", "spontaneity", "balance"
+    ]
+    
+    for trait in personality_traits:
+        pref_col = f"pref_{trait}"
+        trait_col = f"trait_{trait}"
+        
+        # Only check if the preference column exists
+        if pref_col in row1 and pref_col in row2:
+            # Check if user1 wants this trait in user2
+            if row1[pref_col] == "Yes":
+                # Use get() with default value 0 in case trait_col doesn't exist
+                trait_score = row2.get(trait_col, 0)
+                score += 1 if trait_score >= 7 else 0
+                total_checks += 1
+            
+            # Check if user2 wants this trait in user1
+            if row2[pref_col] == "Yes":
+                trait_score = row1.get(trait_col, 0)
+                score += 1 if trait_score >= 7 else 0
+                total_checks += 1
     
     return score / total_checks if total_checks > 0 else 0
 
